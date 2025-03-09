@@ -1,7 +1,9 @@
 """[SEARCH-BASED VEHICLE MODEL]"""
 
 from dataclasses import dataclass
-from typing import Dict, Tuple, FrozenSet, TYPE_CHECKING
+from typing import FrozenSet, TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     from state import State
@@ -19,15 +21,15 @@ class VehicleSpecs:
 @dataclass(frozen=True)
 class VehicleCosts:
     """Encapsulates vehicle travel and service costs."""
-    travel_costs: Dict[int, Dict[int, float]]
-    service_costs: Dict[int, Tuple[float, float]]
+    travel_costs: np.ndarray
+    service_costs: np.ndarray
 
 
 @dataclass(frozen=True)
 class VehicleTimes:
     """Encapsulates vehicle travel and service times."""
-    travel_times: Dict[int, Dict[int, float]]
-    service_times: Dict[int, Tuple[float, float]]
+    travel_times: np.ndarray
+    service_times: np.ndarray
 
 
 class Vehicle:
