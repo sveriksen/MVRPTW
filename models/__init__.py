@@ -1,6 +1,4 @@
-"""
-Imports module classes.
-"""
+""" Imports module classes """
 
 from models.actions import Action, Pickup, Delivery, Call
 from models.state import State
