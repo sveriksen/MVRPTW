@@ -1,4 +1,5 @@
-"""Module for loading problem instances.
+"""
+Module for loading problem instances.
 
 Functions:
     load_problem(path: str) -> Tuple[Set[Vehicle], Set[Call]]
