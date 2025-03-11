@@ -1,6 +1,6 @@
 """Naive Solver"""
 
-from typing import List
+from typing import List, Tuple
 from random import choice
 
 from models import Action, Vehicle
@@ -12,10 +12,10 @@ class RandomSolver(SelectionSolver):
     until no further actions are possible. Then it returns the associated vehicle action sequences.
     """
 
-    def select_vehicle(self, active_vehicles : List[Vehicle]) -> Vehicle:
-        """Selects a vehicle from the set of active vehicles."""
-        return choice(active_vehicles)
-
-    def select_action(self, vehicle : Vehicle) -> Action:
-        """Selects an action for the selected vehicle."""
-        return choice(list(vehicle.current_state.next_states.keys()))
+    def select_vehicle_action(self, active_vehicles : List[Vehicle]) -> Tuple[Vehicle, Action]:
+        """
+        Selects a vehicle from the set of active vehicles, and an action for the selected vehicle.
+        """
+        vehicle = choice(active_vehicles)
+        action = choice(list(vehicle.current_state.next_states.keys()))
+        return choice(active_vehicles), action
