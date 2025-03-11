@@ -20,7 +20,7 @@ class Action(ABC):
 
     Attributes:
         action_idx (Literal[0, 1]): 0 for Pickup, 1 for Delivery.
-        node_idx (int): The node where the action takes place.
+        node (int): The node where the action takes place.
         earliest_time (float): Earliest allowed time for the action.
         latest_time (float): Latest allowed time for the action.
         _call (weakref.ref or None): Weak reference to the linked Call object.
@@ -31,7 +31,7 @@ class Action(ABC):
     def __init__(
         self,
         action_idx: Literal[0, 1],
-        node_idx: int,
+        node: int,
         earliest_time: float,
         latest_time: float
     ):
@@ -40,7 +40,7 @@ class Action(ABC):
 
         Args:
             action_idx (Literal[0, 1]): Either 0 (Pickup) or 1 (Delivery).
-            node_idx (int): The index of the node where the action occurs.
+            node (int): The index of the node where the action occurs.
             earliest_time (float): The earliest possible time to execute the action.
             latest_time (float): The latest possible time to execute the action.
 
@@ -56,7 +56,7 @@ class Action(ABC):
                              f"greater than 'latest_time' ({latest_time}).")
 
         self.action_idx = action_idx
-        self.node_idx = node_idx
+        self.node = node
         self.earliest_time = earliest_time
         self.latest_time = latest_time
 
@@ -120,27 +120,37 @@ class Action(ABC):
 class Pickup(Action):
     """Represents picking up a Call. Inherits from Action."""
 
-    def __init__(self, node_idx: int, earliest_time: float, latest_time: float):
+    def __init__(self, node: int, earliest_time: float, latest_time: float):
         """
         Args:
-            node_idx (int): The node index where the pickup occurs.
+            node (int): The node index where the pickup occurs.
             earliest_time (float): Earliest allowed time for pickup.
             latest_time (float): Latest allowed time for pickup.
         """
-        super().__init__(0, node_idx, earliest_time, latest_time)
+        super().__init__(0, node, earliest_time, latest_time)
+
+    @property
+    def delivery(self) -> "Delivery":
+        """A short-hand reference to this action's corresponding delivery action."""
+        return self.call.delivery
 
 
 class Delivery(Action):
     """Represents the delivery of a Call. Inherits from Action."""
 
-    def __init__(self, node_idx: int, earliest_time: float, latest_time: float):
+    def __init__(self, node: int, earliest_time: float, latest_time: float):
         """
         Args:
-            node_idx (int): The node index where the delivery occurs.
+            node (int): The node index where the delivery occurs.
             earliest_time (float): Earliest allowed time for delivery.
             latest_time (float): Latest allowed time for delivery.
         """
-        super().__init__(1, node_idx, earliest_time, latest_time)
+        super().__init__(1, node, earliest_time, latest_time)
+
+    @property
+    def pickup(self) -> "Pickup":
+        """A short-hand reference to this action's corresponding pickup action."""
+        return self.call.pickup
 
 
 class Call:

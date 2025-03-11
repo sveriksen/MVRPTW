@@ -169,7 +169,7 @@ def load_problem(path: str) -> Tuple[Set[Vehicle], Set[Call]]:
         )
 
         vehicle_obj = Vehicle(
-            state=vdict["state"],
+            initial_state=vdict["state"],
             specs=specs,
             costs=costs,
             times=times
