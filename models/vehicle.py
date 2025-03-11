@@ -1,7 +1,7 @@
 """[SEARCH-BASED VEHICLE MODEL]"""
 
 from dataclasses import dataclass
-from typing import FrozenSet, Set, Union
+from typing import FrozenSet, Set, Union, List
 
 import numpy as np
 
@@ -59,8 +59,9 @@ class Vehicle:
             costs (VehicleCosts): Encapsulates travel and service costs.
             times (VehicleTimes): Encapsulates travel and service times.
         """
-        self.state_tree = initial_state
+        self.initial_state = initial_state
         self.current_state = initial_state
+        self.route_length = 0
 
         self.specs = specs
         self.costs = costs
@@ -68,13 +69,21 @@ class Vehicle:
 
         self._hash = hash(self.specs.idx)
 
+    def reset(self):
+        """Resets search tree, and sets current_state to initial_state"""
+        self.initial_state.delete_children()
+        self.current_state = self.initial_state
+        self.route_length = 0
+
     def select(self, action : "Action"):
         """Selects the provided action if in self.current_state.next_states"""
-        if action not in self.current_state.next_states:
-            raise ValueError(f"Provided action '{action}' not in the dictionary of next states")
+        self.current_state.select(action)
+        self.current_state = self.current_state.next_state
+        self.route_length += 1
 
-        self.current_state.selected_action = action
-        self.current_state = self.current_state.next_states[action]
+    def remove(self, call : "Call"):
+        """Removes all occurances of this call in this vehicle's state tree"""
+        self.initial_state.remove(call)
 
     def expand(self, unanswered_calls : Set["Call"]):
         """Expands the search tree by computing feasible next states"""
@@ -117,22 +126,86 @@ class Vehicle:
         if new_time is None:
             return None
 
+        new_node = action.node
+        new_load = self.current_state.load + action.load_delta
+
         if isinstance(action, Pickup):
             if action.call not in self.specs.compatible_calls:
                 return None
             new_commitments = self.current_state.commitments.union({action.delivery})
+            new_state = State(new_node, new_time, new_commitments, load=new_load)
 
         elif isinstance(action, Delivery):
             if action not in self.current_state.commitments:
                 return None
             new_commitments = self.current_state.commitments.difference({action})
+            new_state = State(new_node, new_time, new_commitments, load=new_load)
 
         else:
             raise ValueError(f"Provided action '{action}' not feasible for this vehicle '{self}'.")
 
-        new_node = action.node
+        if not self.is_feasible(new_state):
+            return None
 
-        return State(new_node, new_time, new_commitments)
+        return new_state
+
+    def is_feasible(self, state : "State") -> bool:
+        """Returns True if this vehicle can deliver all provided commitments."""
+        commitments = state.commitments
+
+        if not commitments:
+            return True
+
+        sorted_commitments = sorted(
+            commitments,
+            key = lambda delivery : delivery.latest_time
+        )
+
+        for i, delivery in enumerate(sorted_commitments):
+            new_load = state.load + delivery.load_delta
+            if new_load > self.specs.capacity:
+                continue
+
+            travel_time = self.times.travel_times[state.node][delivery.node]
+            arrival_time = state.time + travel_time
+
+            if arrival_time > delivery.latest_time:
+                continue
+
+            wait_time = max(0.0, delivery.earliest_time - arrival_time)
+            service_time = self.times.service_times[delivery.call_idx][1]
+            new_time = arrival_time + wait_time + service_time
+
+            remaining_commitments = frozenset(sorted_commitments[:i] + sorted_commitments[i+1:])
+
+            new_state = State(delivery.node, new_time, remaining_commitments, load=new_load)
+
+            if self.is_feasible(new_state):
+                return True
+
+        return False
+
+    @property
+    def action_sequence(self) -> List["Action"]:
+        """
+        Returns the sequence of actions from the initial node to the \\
+        final node with no selected action.
+        """
+        return self.initial_state.action_sequence()
+
+    @property
+    def cost(self) -> float:
+        """Calculates total cost for this vehicle's assigned actions."""
+        total_cost = 0.0
+        current_node = self.initial_state.node
+
+        for action in self.action_sequence:
+            total_cost += self.costs.travel_costs[current_node, action.node]
+            total_cost += self.costs.service_costs[action.call_idx, action.action_idx]
+            total_cost -= action.call.void_cost / 2
+            current_node = action.node
+
+        return total_cost
 
     def __eq__(self, other : object) -> bool:
         if not isinstance(other, Vehicle):

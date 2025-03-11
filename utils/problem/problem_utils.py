@@ -47,7 +47,7 @@ def parse_header_info(lines : List[str]) -> Tuple[int, int, int]:
     return num_nodes, num_vehicles, num_calls
 
 
-def load_problem(path: str) -> Tuple[Set[Vehicle], Set[Call]]:
+def load_problem(path: str) -> Tuple[List[Vehicle], Set[Call]]:
     """
     Loads the problem instance from a file, returning sets of Vehicles and Calls.
     """
@@ -150,7 +150,7 @@ def load_problem(path: str) -> Tuple[Set[Vehicle], Set[Call]]:
         call_instances[c_idx] = call_obj
         calls.add(call_obj)
 
-    vehicles = set()
+    vehicles = []
     for v_idx, vdict in sorted(vehicle_data.items()):
         specs = VehicleSpecs(
             idx=v_idx,
@@ -174,6 +174,6 @@ def load_problem(path: str) -> Tuple[Set[Vehicle], Set[Call]]:
             costs=costs,
             times=times
         )
-        vehicles.add(vehicle_obj)
+        vehicles.append(vehicle_obj)
 
     return vehicles, calls
