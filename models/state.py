@@ -25,12 +25,9 @@ class State:
         self.selected_action = None
         self.next_state = None
 
-        self._frontier : Set["State"] = set()
-
     def add_transition(self, action : "Action", next_state : "State"):
         """Adds (action, next_state) to self.next_states"""
         self.next_states[action] = next_state
-        self._frontier.add(next_state)
 
     def select(self, action : "Action"):
         """Selects the provided action if in self.current_state.next_states"""
@@ -39,7 +36,6 @@ class State:
 
         self.selected_action = action
         self.next_state = self.next_states[action]
-        self._frontier = self.next_state.local_frontier
 
     def remove(self, call: "Call"):
         """Removes all occurrences of call in the tree."""
@@ -52,30 +48,21 @@ class State:
         for state in self.next_states.values():
             state.remove(call)
 
-        self._frontier = set().union(self.next_states.values())
-
     @property
     def frontier(self) -> Set["State"]:
-        """
-        Returns frontier of State.
-        Obtains frontier recursively.
-        Updates Frontier on calculation.
-        """
-        new_frontier = set()
-        for state in self.local_frontier:
+        """Returns frontier of State. Obtains frontier recursively."""
+        if not self.next_states:
+            return {self}
+
+        frontier = set()
+        for state in self.next_states.values():
             if not state.next_states:
-                new_frontier.add(state)
+                frontier.add(state)
                 continue
-            new_frontier.update(state.frontier)
 
-        self._frontier = new_frontier
+            frontier.update(state.frontier)
 
-        return new_frontier
-
-    @property
-    def local_frontier(self) -> Set["State"]:
-        """Returns the locally stored frontier without triggering full recomputation."""
-        return self._frontier if self.next_states else {self}
+        return frontier
 
     @property
     def load(self) -> float:
