@@ -19,7 +19,7 @@ class State:
         self.node = node
         self.time = time
         self.commitments = commitments
-        self.load = load if load is not None else sum(d.call.size for d in commitments)
+        self._load = load
 
         self.next_states : Dict["Action", "State"] = {}
         self.selected_action = None
@@ -76,6 +76,13 @@ class State:
     def local_frontier(self) -> Set["State"]:
         """Returns the locally stored frontier without triggering full recomputation."""
         return self._frontier if self.next_states else {self}
+
+    @property
+    def load(self) -> float:
+        """Lazily computes and caches the load only if it was not explicitly provided."""
+        if self._load is None:
+            self._load = sum(d.call.size for d in self.commitments)
+        return self._load
 
     @property
     def action_sequence(self) -> List["Action"]:
