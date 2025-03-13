@@ -16,6 +16,11 @@ class RandomSolver(SelectionSolver):
         """
         Selects a vehicle from the set of active vehicles, and an action for the selected vehicle.
         """
-        vehicle = choice(active_vehicles)
-        action = choice(list(vehicle.current_state.next_states.keys()))
-        return choice(active_vehicles), action
+        choices = [
+            (vehicle, action)
+            for vehicle in active_vehicles
+            for action in vehicle.current_state.next_states.keys()
+        ]
+        vehicle, action = choice(choices)
+
+        return vehicle, action

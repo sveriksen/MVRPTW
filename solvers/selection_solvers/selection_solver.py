@@ -1,53 +1,27 @@
 """
-Abstract base class for selection-based solvers.
-
-This module defines a framework for solvers that iteratively select:
-1. A vehicle from the set of active vehicles.
-2. An action from the possible actions of the selected vehicle.
-
 Classes:
-- SelectionSolver: Abstract base class with select_vehicle and select_action methods.
+- SelectionSolver: Abstract base class for one step look-ahead selection-based solvers.
 """
 
-from abc import abstractmethod
-from typing import List, Tuple
+from models import Action, Vehicle
+from solvers.search_solvers import SearchSolver
 
-from solvers.base_solver import Solver
-from models import Action, Delivery, Vehicle
-
-class SelectionSolver(Solver):
+class SelectionSolver(SearchSolver):
     """
     A family of solvers that differ only in how they choose vehicles and actions.
 
     TODO: Implement select_vehicle_action
     """
 
-    @abstractmethod
-    def select_vehicle_action(self, active_vehicles : List[Vehicle]) -> Tuple[Vehicle, Action]:
-        """Selects a vehicle and action from the set of active vehicles."""
+    def initialize_search_tree(self, vehicle : "Vehicle"):
+        vehicle.expand(self.unanswered_calls)
 
-    def solve(self) -> List[List[Action]]:
-        """Runs the selection-based solving process."""
+    def expand_vehicle_search_tree(self, selected_vehicle : "Vehicle"):
+        selected_vehicle.expand(self.unanswered_calls)
+
+    def remove_answered_call(self, selected_vehicle : "Vehicle", selected_action : "Action"):
         for vehicle in self.vehicles:
-            vehicle.expand(self.unanswered_calls)
-
-        while True:
-            active_vehicles = self.get_active_vehicles()
-            if not active_vehicles:
-                break
-
-            vehicle, action = self.select_vehicle_action(active_vehicles)
-            vehicle.select(action)
-            self.unanswered_calls.difference_update({action.call})
-            vehicle.expand(self.unanswered_calls)
-
-            if isinstance(action, Delivery):
+            if vehicle == selected_vehicle:
                 continue
 
-            for vehicle in self.vehicles:
-                if vehicle == vehicle:
-                    continue
-
-                vehicle.remove(action.call)
-
-        return self.get_action_sequences()
+            vehicle.remove(selected_action.call)

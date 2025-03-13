@@ -1,6 +1,7 @@
 """Base Class for all solver classes"""
 
 from typing import List
+from pathlib import Path
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
@@ -15,11 +16,13 @@ class Solver(ABC):
     Solver Base Class
     Attributes:
         data_path (str): Path to the data of the problem
+        instance_name (str): Name of the problem instance
         vehicles (Set[Vehicle]): Vehicles from problem
         calls (Set[Call]): Calls from problem
     """
     def __init__(self, data_path : str):
         self.data_path = data_path
+        self.instance_name = Path(data_path).stem
         self.vehicles, self.calls = load_problem(data_path)
         self.unanswered_calls = self.calls.copy()
 
@@ -57,7 +60,8 @@ class Solver(ABC):
 
         progressbar = tqdm(
             total=n,
-            desc=f"Solver: {self.__class__.__name__}, "
+            desc=f"Instance: '{self.instance_name}', "
+            f"Solver: {self.__class__.__name__}, "
             f"Cost: {best_cost}, "
             f"Unanswered Calls: {len(self.unanswered_calls)}"
         )
@@ -70,7 +74,8 @@ class Solver(ABC):
                 best_cost = cost
                 best_action_sequence = action_sequence
                 progressbar.set_description(
-                    desc=f"Solver: {self.__class__.__name__}, "
+                    desc=f"Instance: '{self.instance_name}', "
+                    f"Solver: {self.__class__.__name__}, "
                     f"Cost: {format_number(int(best_cost))}, "
                     f"Unanswered Calls: {len(self.unanswered_calls)}"
                 )
@@ -78,5 +83,6 @@ class Solver(ABC):
             self.reset()
 
             progressbar.update()
+        progressbar.close()
 
         return best_action_sequence

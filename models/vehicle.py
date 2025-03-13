@@ -1,13 +1,14 @@
 """[SEARCH-BASED VEHICLE MODEL]"""
 
 from dataclasses import dataclass
-from typing import FrozenSet, Set, Union, List
+from typing import FrozenSet, Set, Union, List, Optional
 
 import numpy as np
 
 from models.state import State
 from models.actions import Action, Call
 from models.actions import Delivery, Pickup
+from utils.search import expand_state, delete_children
 
 
 @dataclass(frozen=True)
@@ -54,57 +55,42 @@ class Vehicle:
         Initializes a Vehicle instance.
 
         Args:
-            initial_state (State): Initial state of the vehicle.
+            initial_state (State): Initial state of the vehicle. (no commitments)
             spec (VehicleSpec): Basic vehicle attributes.
             costs (VehicleCosts): Encapsulates travel and service costs.
             times (VehicleTimes): Encapsulates travel and service times.
         """
         self.initial_state = initial_state
         self.current_state = initial_state
-        self.route_length = 0
 
         self.specs = specs
         self.costs = costs
         self.times = times
 
+        self._action_sequence : List["Action"] = []
+
         self._hash = hash(self.specs.idx)
 
     def reset(self):
         """Resets search tree, and sets current_state to initial_state"""
-        self.initial_state.delete_children()
+        delete_children(self.initial_state)
         self.current_state = self.initial_state
-        self.route_length = 0
+
+        self._action_sequence : List["Action"] = []
 
     def select(self, action : "Action"):
         """Selects the provided action if in self.current_state.next_states"""
         self.current_state.select(action)
         self.current_state = self.current_state.next_state
-        self.route_length += 1
+        self._action_sequence.append(action)
 
     def remove(self, call : "Call"):
         """Removes all occurances of this call in this vehicle's state tree"""
-        self.initial_state.remove(call)
+        self.current_state.remove(call)
 
-    def expand(self, unanswered_calls : Set["Call"]):
+    def expand(self, unanswered_calls : Set["Call"], depth : int = 1):
         """Expands the search tree by computing feasible next states"""
-        potential_actions = []
-
-        for delivery in self.current_state.commitments:
-            if delivery in self.current_state.next_states:
-                continue
-            potential_actions.append(delivery)
-
-        for pickup in {c.pickup for c in self.specs.compatible_calls & unanswered_calls}:
-            if pickup in self.current_state.next_states:
-                continue
-            potential_actions.append(pickup)
-
-        for action in potential_actions:
-            resulting_state = self.perform(action)
-            if resulting_state is None:
-                continue
-
-            self.current_state.next_states[action] = resulting_state
+        expand_state(self.current_state, self, unanswered_calls, depth=depth)
 
     def perform(self, action : "Action") -> Union["State", None]:
         """
@@ -185,13 +171,24 @@ class Vehicle:
 
         return False
 
+    def get_action_cost(self, action : "Action", node : Optional[int] = None) -> float:
+        """Calculates the cost of this vehicle performing this action right now."""
+        if node is None:
+            node = self.current_state.node
+
+        return (
+            self.costs.travel_costs[node, action.node] +
+            self.costs.service_costs[action.call_idx, action.action_idx] -
+            action.call.void_cost / 2
+        )
+
     @property
     def action_sequence(self) -> List["Action"]:
         """
         Returns the sequence of actions from the initial node to the \\
         final node with no selected action.
         """
-        return self.initial_state.action_sequence()
+        return self._action_sequence
 
     @property
     def cost(self) -> float:
@@ -200,9 +197,7 @@ class Vehicle:
         current_node = self.initial_state.node
 
         for action in self.action_sequence:
-            total_cost += self.costs.travel_costs[current_node, action.node]
-            total_cost += self.costs.service_costs[action.call_idx, action.action_idx]
-            total_cost -= action.call.void_cost / 2
+            total_cost += self.get_action_cost(action, node=current_node)
             current_node = action.node
 
         return total_cost

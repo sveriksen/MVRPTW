@@ -2,7 +2,7 @@
 This module implements the State class which is used for search based solvers.
 """
 
-from typing import Dict, FrozenSet, Set, Optional, List, TYPE_CHECKING
+from typing import Dict, FrozenSet, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from models.actions import Action, Call, Delivery
@@ -49,38 +49,11 @@ class State:
             state.remove(call)
 
     @property
-    def frontier(self) -> Set["State"]:
-        """Returns frontier of State. Obtains frontier recursively."""
-        if not self.next_states:
-            return {self}
-
-        frontier = set()
-        for state in self.next_states.values():
-            if not state.next_states:
-                frontier.add(state)
-                continue
-
-            frontier.update(state.frontier)
-
-        return frontier
-
-    @property
     def load(self) -> float:
         """Lazily computes and caches the load only if it was not explicitly provided."""
         if self._load is None:
             self._load = sum(d.call.size for d in self.commitments)
         return self._load
-
-    @property
-    def action_sequence(self) -> List["Action"]:
-        """
-        Returns the sequence of actions from this state, to the final \\
-        state with no selected action.
-        """
-        if self.selected_action is None:
-            return []
-
-        return [self.selected_action] + self.next_state.action_sequence
 
     def __repr__(self) -> str:
         return self.__str__()
